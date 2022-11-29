@@ -21,19 +21,28 @@
 #include "swapchain.h"
 #include "image_views.h"
 #include "renderpass.h"
-/*
-#include "command.h"
 #include "framebuffers.h"
 #include "sync_objects.h"
 #include "descriptor_sets.h"
 #include "pipeline.h"
 #include "buffers.h"
 #include "data_range.h"
-*/
+#include "renderloop.h"
+
+bool get_framebuffer_size(vulkan_types* context, platform_state* platform_context)
+{
+        context->framebuffer_context.framebuffer_width = platform_context->win_width;
+        context->framebuffer_context.framebuffer_height = platform_context->win_height;
+        return true;
+}
+
 int main(){
         platform_state plat_context = {0};
         
         PASSERT(platform_startup( &plat_context, "Test Application",100 , 100, 800, 600), "Platform startup failed");
+        
+        PASSERT(get_framebuffer_size(&vulkan_context, &plat_context), "failed to get framebuffer size\n");
+        
         
         PASSERT(create_instance(&vulkan_context),  "Instance creation failed");
         
@@ -49,50 +58,30 @@ int main(){
         
         PASSERT(create_render_pass(&vulkan_context), "Failed to create render pass");
         
-        /*
-        if(!create_framebuffers(&vulkan_context))
-        {
-                return -1;
-        }
         
-        if(!create_command_buffer(&vulkan_context, true))
-        {
-                return -1;
-        }
+        PASSERT(create_framebuffers(&vulkan_context, &plat_context), "Failed to create framebuffers");
         
-        if(!create_sync_objects(&vulkan_context))
-        {
-                return -1;
-        }
         
-        if(!create_descriptor_layouts(&vulkan_context))
-        {
-                return -1;
-        }
+        PASSERT(create_command_buffer(&vulkan_context, true), "command buffers faield to create");
         
-        if(!create_pipeline(&vulkan_context, false))
-        {
-                return -1;
-        }
         
-        if(!create_buffers(&vulkan_context))
-        {
-                return -1;
-        }
+        PASSERT(create_sync_objects(&vulkan_context), "failed to create sync object");
         
-        if(!init(vulkan_context))
-        {
-                return -1;
-        }
-        if(!vulkan_object_shader_update_global_state(&vulkan_context, &main_shader))
-        {
-                return -1;
-                
-        }
-        */
+        PASSERT(create_descriptor_layouts(&vulkan_context), "Failed to create descriptor layouts");
+        
+        PASSERT(create_pipeline(&vulkan_context, false), "Pipeline failed to create");
+        
+        
+        PASSERT(create_buffers(&vulkan_context), "Failed to create buffers");
+        
+        PASSERT(init(vulkan_context), "failed to init");
+        
+        PASSERT(vulkan_object_shader_update_global_state(&vulkan_context), "failed to update descriptor/shader");
+        
         while(test){
                 
                 platform_pump_messages(&plat_context);
+                PASSERT(renderloop(&vulkan_context), "failed to render eyeroll");
         }
         
 }

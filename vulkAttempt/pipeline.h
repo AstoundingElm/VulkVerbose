@@ -1,46 +1,57 @@
 #pragma once
 //@param cunt
-PINLINE bool create_pipeline(vulkan_types* context, bool is_wireframe)
+
+#define OBJECT_SHADER_STAGE_COUNT 2
+
+PINLINE bool create_shader_module(vulkan_types* context, const char * name, const char * type_str, VkShaderStageFlagBits shader_stage_flag,
+                                  u32 stage_index,
+                                  vulkan_shader_stage* shader_stages)
 {
-        
-        VkShaderModule vertexShader, fragmentShader;
         
         read_shader_file();
         
+        kzero_memory(&shader_stages[stage_index].create_info, sizeof(VkShaderModuleCreateInfo));
+        shader_stages[stage_index].create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         
-        VkShaderModuleCreateInfo vertShaderInfo 
-                = {VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
-        
-        vertShaderInfo.pCode = shader_data.vert_code;
-        vertShaderInfo.codeSize = shader_data.vert_size;
-        VK_CHECK(vkCreateShaderModule(context->logical_device, &vertShaderInfo, 0, &vertexShader));
-        
-        // Fragment Shader
-        
-        VkShaderModuleCreateInfo fragShaderInfo = {0};
-        fragShaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        fragShaderInfo.pCode = (const u32 *)shader_data.frag_code;
-        fragShaderInfo.codeSize = (const u32*)shader_data.frag_size;
-        VK_CHECK(vkCreateShaderModule(context->logical_device, &fragShaderInfo, 0, &fragmentShader));
-        
-        VkPipelineShaderStageCreateInfo vertStage = {0};
-        vertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vertStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertStage.pName = "main";
-        vertStage.module = vertexShader;
-        
-        VkPipelineShaderStageCreateInfo fragStage = {0};
-        fragStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        fragStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        fragStage.pName = "main";
-        fragStage.module = fragmentShader;
-        
-        VkPipelineShaderStageCreateInfo shaderStages[2] = {
-                vertStage,
-                fragStage};
+        shader_stages[stage_index].create_info.codeSize = size;
+        shader_stages[stage_index].create_info.pCode = (u32*)file_buffer;
         
         
-        //VkVertexInputAttributeDescription attribute_descriptions[1];
+        
+        VK_CHECK(vkCreateShaderModule(
+                                      context->device.logical_device,
+                                      &shader_stages[stage_index].create_info,
+                                      context->allocator,
+                                      &shader_stages[stage_index].handle));
+        
+        // Shader stage info
+        kzero_memory(&shader_stages[stage_index].shader_stage_create_info, sizeof(VkPipelineShaderStageCreateInfo));
+        shader_stages[stage_index].shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shader_stages[stage_index].shader_stage_create_info.stage = shader_stage_flag;
+        shader_stages[stage_index].shader_stage_create_info.module = shader_stages[stage_index].handle;
+        shader_stages[stage_index].shader_stage_create_info.pName = "main";
+        return true;
+        
+}
+
+
+#define BUILTIN_SHADER_NAME_OBJECT "Builtin.ObjectShader"
+PINLINE bool create_shaders(vulkan_types* context, vulkan_object_shader* out_shader)
+{
+        char stage_type_strs[OBJECT_SHADER_STAGE_COUNT][5] = {"vert", "frag"};
+        VkShaderStageFlagBits stage_types[OBJECT_SHADER_STAGE_COUNT] = {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT};
+        
+        for (u32 i = 0; i < OBJECT_SHADER_STAGE_COUNT; ++i) {
+                if (!create_shader_module(context, BUILTIN_SHADER_NAME_OBJECT, stage_type_strs[i], stage_types[i], i, out_shader->stages)) {
+                        printf("Unable to create %s shader module for '%s'.", stage_type_strs[i], BUILTIN_SHADER_NAME_OBJECT);
+                        return false;
+                }
+        }
+        
+}
+
+PINLINE bool create_pipeline(vulkan_types* context, bool is_wireframe)
+{
         
         VkViewport viewport = {0};
         
@@ -137,7 +148,7 @@ PINLINE bool create_pipeline(vulkan_types* context, bool is_wireframe)
         vertex_input_info.vertexBindingDescriptionCount = 1;
         vertex_input_info.pVertexBindingDescriptions = &binding_description;
         vertex_input_info.vertexAttributeDescriptionCount = 1;
-        vertex_input_info.pVertexAttributeDescriptions = context->input_attribute_descriptions;
+        vertex_input_info.pVertexAttributeDescriptions = context->input_attribute_context.input_attribute_descriptions;
         
         // Input assembly
         VkPipelineInputAssemblyStateCreateInfo input_assembly = {0};
@@ -161,16 +172,16 @@ PINLINE bool create_pipeline(vulkan_types* context, bool is_wireframe)
         
         // Descriptor set layouts
         pipeline_layout_create_info.setLayoutCount = 1;//descriptor_set_layout_count;
-        pipeline_layout_create_info.pSetLayouts = &context->set_layout;//descriptor_set_layouts;
+        pipeline_layout_create_info.pSetLayouts = context->descriptor_context.layouts;
         
         
         
         // Create the pipeline layout.
         VK_CHECK(vkCreatePipelineLayout(
-                                        context->logical_device,
+                                        context->device_context.logical_device,
                                         &pipeline_layout_create_info,
-                                        context->allocator,
-                                        &context->pipe_layout));
+                                        context->instance_context.allocator,
+                                        &context->pipeline_context.pipe_layout));
         
         
         
@@ -191,20 +202,20 @@ PINLINE bool create_pipeline(vulkan_types* context, bool is_wireframe)
         pipeline_create_info.pDynamicState = &dynamic_state_create_info;
         pipeline_create_info.pTessellationState = 0;
         
-        pipeline_create_info.layout = context->pipe_layout;
+        pipeline_create_info.layout = context->pipeline_context.pipe_layout;
         
-        pipeline_create_info.renderPass = context->renderpass;
+        pipeline_create_info.renderPass = context->renderpass_context.renderpass;
         pipeline_create_info.subpass = 0;
         pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
         pipeline_create_info.basePipelineIndex = -1;
         
         VK_CHECK(vkCreateGraphicsPipelines(
-                                           context->logical_device,
+                                           context->device_context.logical_device,
                                            VK_NULL_HANDLE,
                                            1,
                                            &pipeline_create_info,
-                                           context->allocator,
-                                           &context->pipeline));
+                                           context->instance_context.allocator,
+                                           &context->pipeline_context.pipeline));
         puts("successfully created pipeline\n");
         return true;
         

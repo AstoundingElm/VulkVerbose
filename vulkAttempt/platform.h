@@ -10,8 +10,8 @@ PINLINE b8 platform_startup(
                             i32 width,
                             i32 height) {
         
-        state->win_width = 500;
-        state->win_height = 500;
+        state->win_width = width;
+        state->win_height = height;
         
         // Connect to X
         state->display = XOpenDisplay(NULL);

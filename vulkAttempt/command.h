@@ -40,7 +40,7 @@ PINLINE bool create_command_buffer(vulkan_types* context,  bool is_primary )
         VK_CHECK(vkAllocateCommandBuffers(
                                           context->device_context.logical_device,
                                           &alloc_info,
-                                          &context->graphics_command_buffer->handle));
+                                          &context->graphics_command_buffer.handle));
         puts("command buffer created\n");
         return true;
 }

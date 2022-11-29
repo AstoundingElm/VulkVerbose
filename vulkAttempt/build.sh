@@ -8,7 +8,7 @@ cFilenames="/home/petermiller/Desktop/4coder/vulkAttempt/main.c"
 echo "Files:" $cFilenames
 
 assembly="engine"
-compilerFlags="-g -ferror-limit=200  -Wextra -Wall -Warc -pedantic  -fms-extensions  -Werror=vla"
+compilerFlags="-g -ferror-limit=200  -Wextra -Wall -Warc -pedantic  -fms-extensions " # -Werror=vla"
 # -fsanitize=address -fsanitize=undefined #-fno-sanitize-recover=all -fsanitize=float-divide-by-zero #-fsanitize=float-cast-overflow -fno-sanitize=null #-fno-sanitize=alignment"             
 
 includeFlags="-Isrc -I$VULKAN_SDK/include -I/home/petermiller/Desktop/4coder/vulkAttempt"

@@ -73,7 +73,7 @@ typedef struct vulkan_object_shader {
         
 } vulkan_object_shader;
 
-static vulkan_object_shader main_shader;
+
 
 typedef struct 
 {
@@ -81,15 +81,12 @@ typedef struct
         VkAllocationCallbacks* allocator;
         VkDebugUtilsMessengerEXT debug_messenger;
         
-        
 }instance_types;
 
 typedef struct
 {
-        
         VkSurfaceCapabilitiesKHR surface_caps;
         VkSurfaceKHR surface;
-        
         
 }surface_types;
 
@@ -102,8 +99,6 @@ typedef struct
         VkPhysicalDevice gpu;
         VkExtensionProperties device_extensions[500];
         u32 device_ext_count;
-        
-        
         
 }device_types;
 
@@ -160,7 +155,74 @@ typedef struct
 
 typedef struct
 {
+        VkFramebuffer framebuffer;
+        u32 framebuffer_width;
+        u32 framebuffer_height;
+        
+}framebuffer_types;
+
+typedef struct
+{
+        VkImageView * attachments;
+        u32 attachment_count;
+        
+} attachment_types;
+
+typedef struct
+{
+        VkFence fence;
+        VkSemaphore aquireSemaphore;
+        VkSemaphore submitSemaphore;
+        
+} sync_types;
+
+typedef struct
+{
+        
+        VkDescriptorSetLayout  global_descriptor_set_layout;
+        VkDescriptorPool global_descriptor_pool;
+        VkDescriptorSetLayout * layouts;
+        VkDescriptorSet global_descriptor_sets[3];
+        
+}descriptor_types;
+
+typedef struct
+{
+        VkVertexInputAttributeDescription * input_attribute_descriptions;
+        
+} input_attribute_types;
+
+typedef struct
+{
+        VkPipelineLayout pipe_layout;
+        VkPipeline pipeline;
+}pipeline_types;
+
+typedef struct
+{
+        vulkan_buffer object_vertex_buffer;
+        vulkan_buffer object_index_buffer;
+        u64 geometry_vertex_offset;
+        u64 geometry_index_offset;
+        
+        
+} buffer_types;
+
+typedef struct
+{
         vulkan_command_buffer* graphics_command_buffer;
+        
+}command_buffer_types;
+
+typedef struct
+{
+        
+        buffer_types buffer_context;
+        pipeline_types pipeline_context;
+        input_attribute_types input_attribute_context;
+        attachment_types attachment_context;
+        framebuffer_types framebuffer_context;
+        vulkan_command_buffer graphics_command_buffer;
         queue_types queue_context;
         surface_types surface_context;
         instance_types instance_context;
@@ -169,40 +231,13 @@ typedef struct
         swapchain_types swapchain_context;
         renderpass_types renderpass_context;
         depth_types depth_context;
+        sync_types sync_context;
+        descriptor_types descriptor_context;
+        u32 image_index;
         
-        //u32 image_index;
-        
-        
-        /*
-        vulkan_buffer object_vertex_buffer;
-        vulkan_buffer object_index_buffer;
-        u64 geometry_vertex_offset;
-        u64 geometry_index_offset;
-        
+        vulkan_object_shader main_shader;
         
         u32 current_frame;
-        
-        u32 framebuffer_width;
-        u32 framebuffer_height;
-        
-        
-        
-        u32 attachment_count;
-        VkImageView attachments[2];
-        VkVertexInputAttributeDescription input_attribute_descriptions[1];
-        VkFramebuffer framebuffer;
-        
-        VkFence fence;
-        VkSemaphore aquireSemaphore;
-        VkSemaphore submitSemaphore;
-        
-        VkDescriptorSetLayout set_layout;
-        
-        VkPipelineLayout pipe_layout;
-        VkPipeline pipeline;
-        VkDescriptorPool global_descriptor_pool;
-        VkDescriptorSetLayout  global_descriptor_set_layout;
-        */
 }vulkan_types;
 
 static vulkan_types vulkan_context;

@@ -23,9 +23,6 @@ PINLINE bool create_render_pass(vulkan_types* context)
         colour_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         colour_attachment.flags = 0;
         
-        //VkAttachmentDescription attachments[] = {
-        //colour_attachment};
-        
         attachment_descriptions[0] = colour_attachment;
         
         VkAttachmentReference colorAttachmentRef = {0};
@@ -96,6 +93,7 @@ PINLINE bool create_render_pass(vulkan_types* context)
                                     &render_pass_create_info,
                                     context->instance_context.allocator,
                                     &context->renderpass_context.renderpass));
+        puts("Renderpass created succesffuly\n");
         return true;
         
 }

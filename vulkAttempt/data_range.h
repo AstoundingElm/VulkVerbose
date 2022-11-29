@@ -11,7 +11,9 @@ void vulkan_command_buffer_allocate(
         
         memset(out_command_buffer, 0, sizeof(*out_command_buffer));
         
-        VkCommandBufferAllocateInfo allocate_info = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+        VkCommandBufferAllocateInfo allocate_info = {0};
+        allocate_info.sType  = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocate_info.pNext = NULL;
         allocate_info.commandPool = pool;
         allocate_info.level = is_primary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
         allocate_info.commandBufferCount = 1;
@@ -19,7 +21,7 @@ void vulkan_command_buffer_allocate(
         
         out_command_buffer->state = COMMAND_BUFFER_STATE_NOT_ALLOCATED;
         VK_CHECK(vkAllocateCommandBuffers(
-                                          context->logical_device,
+                                          context->device_context.logical_device,
                                           &allocate_info,
                                           &out_command_buffer->handle));
         out_command_buffer->state = COMMAND_BUFFER_STATE_READY;
@@ -30,7 +32,7 @@ void vulkan_command_buffer_free(
                                 VkCommandPool pool,
                                 vulkan_command_buffer* command_buffer) {
         vkFreeCommandBuffers(
-                             context->logical_device,
+                             context->device_context.logical_device,
                              pool,
                              1,
                              &command_buffer->handle);
@@ -58,7 +60,9 @@ void vulkan_command_buffer_begin(
                                  b8 is_renderpass_continue,
                                  b8 is_simultaneous_use) {
         
-        VkCommandBufferBeginInfo begin_info = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+        VkCommandBufferBeginInfo begin_info = {0};
+        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin_info.pNext = NULL;
         begin_info.flags = 0;
         if (is_single_use) {
                 begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -76,11 +80,11 @@ void vulkan_command_buffer_begin(
 
 void vulkan_buffer_destroy(vulkan_types* context, vulkan_buffer* buffer) {
         if (buffer->memory) {
-                vkFreeMemory(context->logical_device, buffer->memory, context->allocator);
+                vkFreeMemory(context->device_context.logical_device, buffer->memory, context->instance_context.allocator);
                 buffer->memory = 0;
         }
         if (buffer->handle) {
-                vkDestroyBuffer(context->logical_device, buffer->handle, context->allocator);
+                vkDestroyBuffer(context->device_context.logical_device, buffer->handle, context->instance_context.allocator);
                 buffer->handle = 0;
         }
         buffer->total_size = 0;
@@ -108,7 +112,8 @@ void vulkan_command_buffer_end_single_use(
         vulkan_command_buffer_end(command_buffer);
         
         // Submit the queue
-        VkSubmitInfo submit_info = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        VkSubmitInfo submit_info = {0}; submit_info.sType  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.pNext = NULL;
         submit_info.commandBufferCount = 1;
         submit_info.pCommandBuffers = &command_buffer->handle;
         VK_CHECK(vkQueueSubmit(queue, 1, &submit_info, 0));
@@ -122,19 +127,19 @@ void vulkan_command_buffer_end_single_use(
 
 void* vulkan_buffer_lock_memory(vulkan_types* context, vulkan_buffer* buffer, u64 offset, u64 size, u32 flags) {
         void* data;
-        VK_CHECK(vkMapMemory(context->logical_device, buffer->memory, offset, size, flags, &data));
+        VK_CHECK(vkMapMemory(context->device_context.logical_device, buffer->memory, offset, size, flags, &data));
         return data;
 }
 
 void vulkan_buffer_unlock_memory(vulkan_types* context, vulkan_buffer* buffer) {
-        vkUnmapMemory(context->logical_device, buffer->memory);
+        vkUnmapMemory(context->device_context.logical_device, buffer->memory);
 }
 
 void vulkan_buffer_load_data(vulkan_types* context, vulkan_buffer* buffer, u64 offset, u64 size, u32 flags, const void* data) {
         void* data_ptr;
-        VK_CHECK(vkMapMemory(context->logical_device, buffer->memory, offset, size, flags, &data_ptr));
+        VK_CHECK(vkMapMemory(context->device_context.logical_device, buffer->memory, offset, size, flags, &data_ptr));
         memcpy(data_ptr, data, size);
-        vkUnmapMemory(context->logical_device, buffer->memory);
+        vkUnmapMemory(context->device_context.logical_device, buffer->memory);
 }
 
 void vulkan_buffer_copy_to(
@@ -203,25 +208,27 @@ bool init(vulkan_types context){
         const u32 index_count = 6;
         u32 indices[index_count] = {0, 1, 2, 0, 3, 1};
         
-        upload_data_range(&context, context.primaryCommandPool, 0, context.graphics_queue, &context.object_vertex_buffer, 0, sizeof(vertex_3d) * vert_count, verts);
-        upload_data_range(&context, context.primaryCommandPool, 0, context.graphics_queue, &context.object_index_buffer, 0, sizeof(u32) * index_count, indices);
+        upload_data_range(&context, context.command_pool_context.primaryCommandPool, 0, context.queue_context.graphics_queue, &context.buffer_context.object_vertex_buffer, 0, sizeof(vertex_3d) * vert_count, verts);
+        upload_data_range(&context, context.command_pool_context.primaryCommandPool, 0, context.queue_context.graphics_queue, &context.buffer_context.object_index_buffer, 0, sizeof(u32) * index_count, indices);
         // TODO: end temp code
         
         puts("Vulkan renderer initialized successfully.");
         return true;
 }
 
-bool vulkan_object_shader_update_global_state(vulkan_types* context,  vulkan_object_shader* shader) {
+bool vulkan_object_shader_update_global_state(vulkan_types* context) {
+        
+        
         u32 image_index = context->image_index;
-        VkCommandBuffer command_buffer = context->graphics_command_buffer[image_index].handle;
-        VkDescriptorSet global_descriptor = shader->global_descriptor_sets[image_index];
+        
+        VkDescriptorSet global_descriptor = context->descriptor_context.global_descriptor_sets[image_index];
         
         // Configure the descriptors for the given index.
         u32 range = sizeof(global_uniform_object);
         u64 offset = 0;//sizeof(global_uniform_object) * image_index;
         
         // Copy data to buffer
-        vulkan_buffer_load_data(context, &shader->global_uniform_buffer, offset, range, 0, &shader->global_ubo);
+        vulkan_buffer_load_data(context, &context->main_shader.global_uniform_buffer, offset, range, 0, &shader->global_ubo);
         
         VkDescriptorBufferInfo bufferInfo;
         bufferInfo.buffer = shader->global_uniform_buffer.handle;
@@ -229,15 +236,19 @@ bool vulkan_object_shader_update_global_state(vulkan_types* context,  vulkan_obj
         bufferInfo.range = range;
         
         // Update descriptor sets.
-        VkWriteDescriptorSet descriptor_write = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        VkWriteDescriptorSet descriptor_write = {0};
+        descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptor_write.pNext = NULL;
         descriptor_write.dstSet = shader->global_descriptor_sets[image_index];
         descriptor_write.dstBinding = 0;
         descriptor_write.dstArrayElement = 0;
         descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptor_write.descriptorCount = 1;
         descriptor_write.pBufferInfo = &bufferInfo;
-        vkUpdateDescriptorSets(context->logical_device, 1, &descriptor_write, 0, 0);
+        vkUpdateDescriptorSets(context->device_context.logical_device, 1, &descriptor_write, 0, 0);
         // Bind the global descriptor set to be updated.
         // 
         return true;
 }
+
+

@@ -1,0 +1,1 @@
+$VULKAN_SDK/bin/glslc -fshader-stage=vert vert.glsl -o vert.spv

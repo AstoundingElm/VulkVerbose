@@ -1,0 +1,7 @@
+Breakpoint 1 at 0x53af: file main.c, line 1081.
+Function "arena_init" not defined.
+Make breakpoint pending on future shared library load? (y or [n]) [answered N; input not from terminal]
+No breakpoint number 2.
+.gdbinit:20: Error in sourced command file:
+No stack.
+(gdb) quit
